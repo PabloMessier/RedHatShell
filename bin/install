@@ -28,12 +28,14 @@ print_info "Installing RHEL shell scripts to $INSTALL_DIR..."
 cp "$SCRIPT_DIR/redhat-shell" "$INSTALL_DIR/"
 cp "$SCRIPT_DIR/build-image" "$INSTALL_DIR/"
 cp "$SCRIPT_DIR/manage-container" "$INSTALL_DIR/"
+cp "$SCRIPT_DIR/health-check" "$INSTALL_DIR/"
 cp "$SCRIPT_DIR/common.sh" "$INSTALL_DIR/"
 
 # Make scripts executable
 chmod +x "$INSTALL_DIR/redhat-shell"
 chmod +x "$INSTALL_DIR/build-image"
 chmod +x "$INSTALL_DIR/manage-container"
+chmod +x "$INSTALL_DIR/health-check"
 chmod +x "$INSTALL_DIR/common.sh"
 
 print_success "Scripts installed successfully!"

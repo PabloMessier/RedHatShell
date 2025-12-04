@@ -144,39 +144,89 @@ manage-container reset
 build-image
 ```
 
+### Backup and restore container
+```bash
+# Create a backup
+manage-container backup
+
+# Restore from backup
+manage-container restore <backup-file>
+```
+
+### Run health check
+```bash
+./bin/health-check
+# or if installed:
+health-check
+```
+
+## 🔧 Using the Makefile
+
+For convenience, you can use the Makefile for common operations:
+
+```bash
+make help          # Show available commands
+make install       # Install scripts to ~/bin
+make build         # Build the container image
+make start         # Start the RHEL shell
+make stop          # Stop the container
+make restart       # Restart the container
+make status        # Show container status
+make logs          # View container logs
+make clean         # Remove container (keeps image)
+make reset         # Full reset (removes container and image)
+make health-check  # Run health checks
+make test          # Run validation tests
+```
+
 ## 📁 Directory Structure
 
 ```
 RedHatShell/
-├── Containerfile          # Container image definition
+├── Containerfile              # Container image definition
+├── Makefile                   # Convenience targets for common tasks
+├── LICENSE                    # MIT License
+├── CHANGELOG.md               # Version history
+├── .config                    # Configuration file (optional)
+├── .editorconfig              # Editor configuration
 ├── bin/
-│   ├── redhat-shell       # Main shell launcher script
-│   ├── build-image        # Image build script
-│   ├── install            # Installation script
-│   └── manage-container   # Container management script
+│   ├── redhat-shell           # Main shell launcher script
+│   ├── build-image            # Image build script
+│   ├── install                # Installation script
+│   ├── manage-container       # Container management script
+│   ├── health-check           # Health check and validation script
+│   └── common.sh              # Shared functions and configuration
 ├── documentation/
-│   ├── steps.md           # Setup documentation
-│   └── hostSpecs.md       # Host system specifications
-└── README.md              # This file
+│   ├── DEVELOPMENT_NOTES.md   # Development notes and setup process
+│   └── hostSpecs.md           # Host system specifications
+└── README.md                  # This file
 ```
 
 ## 🔧 Configuration
 
-You can modify these settings in the scripts:
+The project now supports centralized configuration via the `.config` file. You can customize:
 
-- **Container name**: `redhat-shell` (in `bin/redhat-shell`)
-- **Image name**: `localhost/centos9-systemd-arm64` (in `bin/redhat-shell` and `bin/build-image`)
-- **Default user**: `pablo` (in `bin/redhat-shell` and `Containerfile`)
-- **Volume mount**: `/Users` → `/mnt/host` (in `bin/redhat-shell`)
+- **Container name**: `CONTAINER_NAME="redhat-shell"`
+- **Default user**: `DEFAULT_USER="pablo"`
+- **Volume mounts**: `HOST_VOLUME="/Users"` and `CONTAINER_MOUNT="/mnt/host"`
+- **Debug mode**: `DEBUG="false"`
+
+To customize, create or edit `.config` in the project root:
+
+```bash
+# Example .config
+CONTAINER_NAME="my-rhel-shell"
+DEFAULT_USER="myuser"
+DEBUG="true"
+```
+
+The image name is automatically determined based on your system architecture:
+- Apple Silicon (M1/M2/M3/M4): `localhost/centos9-systemd-arm64`
+- Intel Macs: `localhost/centos9-systemd-amd64`
 
 ### Changing the default user
 
-Edit `bin/redhat-shell` and change:
-```bash
-DEFAULT_USER="pablo"
-```
-
-Or create a different user in the `Containerfile`.
+Either edit `.config` or modify the `Containerfile` to create a different default user.
 
 ## 🛠️ Inside the Container
 

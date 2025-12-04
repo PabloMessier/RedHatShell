@@ -1,0 +1,165 @@
+#!/bin/bash
+
+# Health check script for RHEL Shell
+
+# Load common functions and configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
+
+# Track overall health status
+OVERALL_STATUS=0
+
+print_header() {
+    echo ""
+    echo "=========================================="
+    echo "  RHEL Shell Health Check"
+    echo "=========================================="
+    echo ""
+}
+
+check_component() {
+    local component="$1"
+    local status="$2"
+    local message="$3"
+    
+    if [ "$status" -eq 0 ]; then
+        print_success "✓ $component: $message"
+    else
+        print_error "✗ $component: $message"
+        OVERALL_STATUS=1
+    fi
+}
+
+# Start health check
+print_header
+
+# 1. Check Podman Installation
+echo "Checking Podman installation..."
+if command -v podman &> /dev/null; then
+    PODMAN_VERSION=$(podman --version)
+    check_component "Podman" 0 "Installed ($PODMAN_VERSION)"
+else
+    check_component "Podman" 1 "Not installed (run: brew install podman)"
+    print_header
+    echo "Summary: Health check failed"
+    exit 1
+fi
+
+# 2. Check Podman Machine
+echo ""
+echo "Checking Podman machine..."
+if podman machine list --format "{{.Name}}" 2>/dev/null | grep -q .; then
+    MACHINE_NAME=$(podman machine list --format "{{.Name}}" | head -n1)
+    
+    if podman machine list --format "{{.Running}}" 2>/dev/null | grep -q "true"; then
+        check_component "Podman Machine" 0 "Running ($MACHINE_NAME)"
+        
+        # Get machine specs if running
+        MACHINE_CPUS=$(podman machine inspect "$MACHINE_NAME" 2>/dev/null | grep -i cpus | head -n1 | awk '{print $2}' | tr -d ',')
+        MACHINE_MEM=$(podman machine inspect "$MACHINE_NAME" 2>/dev/null | grep -i memory | head -n1 | awk '{print $2}' | tr -d ',')
+        if [ -n "$MACHINE_CPUS" ] && [ -n "$MACHINE_MEM" ]; then
+            print_info "  └─ Resources: ${MACHINE_CPUS} CPUs, ${MACHINE_MEM}MB RAM"
+        fi
+    else
+        check_component "Podman Machine" 1 "Not running (run: podman machine start)"
+    fi
+else
+    check_component "Podman Machine" 1 "Not initialized (run: podman machine init)"
+fi
+
+# 3. Check Architecture
+echo ""
+echo "Checking system architecture..."
+print_info "Architecture: $ARCH"
+print_info "Platform: $PLATFORM"
+print_info "Image suffix: $ARCH_SUFFIX"
+
+# 4. Check Container Image
+echo ""
+echo "Checking container image..."
+if check_image_exists; then
+    IMAGE_SIZE=$(podman images --format "{{.Size}}" "$IMAGE_NAME" 2>/dev/null)
+    IMAGE_CREATED=$(podman images --format "{{.CreatedSince}}" "$IMAGE_NAME" 2>/dev/null)
+    check_component "Container Image" 0 "Exists ($IMAGE_NAME)"
+    print_info "  └─ Size: $IMAGE_SIZE, Created: $IMAGE_CREATED"
+else
+    check_component "Container Image" 1 "Not found (run: build-image)"
+fi
+
+# 5. Check Container
+echo ""
+echo "Checking container..."
+if check_container_exists; then
+    CONTAINER_STATUS=$(podman inspect -f '{{.State.Status}}' "$CONTAINER_NAME" 2>/dev/null)
+    
+    if check_container_running; then
+        check_component "Container" 0 "Running ($CONTAINER_NAME)"
+        
+        # Get container uptime
+        CONTAINER_STARTED=$(podman inspect -f '{{.State.StartedAt}}' "$CONTAINER_NAME" 2>/dev/null)
+        print_info "  └─ Status: $CONTAINER_STATUS"
+        print_info "  └─ Started: $CONTAINER_STARTED"
+    else
+        check_component "Container" 0 "Exists but not running ($CONTAINER_STATUS)"
+        print_info "  └─ Run 'redhat-shell' to start"
+    fi
+else
+    check_component "Container" 0 "Not created (will be created on first run)"
+fi
+
+# 6. Check Volume Mounts
+echo ""
+echo "Checking volume mounts..."
+if [ -d "$HOST_VOLUME" ]; then
+    check_component "Host Volume" 0 "Accessible ($HOST_VOLUME)"
+else
+    check_component "Host Volume" 1 "Not accessible ($HOST_VOLUME)"
+fi
+
+# 7. Check Configuration
+echo ""
+echo "Checking configuration..."
+PROJECT_ROOT="$(get_project_root)"
+if [ -f "$PROJECT_ROOT/.config" ]; then
+    print_info "Custom configuration: $PROJECT_ROOT/.config (loaded)"
+else
+    print_info "Configuration: Using defaults (no .config file)"
+fi
+
+# 8. Check Scripts
+echo ""
+echo "Checking scripts..."
+REQUIRED_SCRIPTS=("redhat-shell" "build-image" "manage-container" "common.sh")
+MISSING_SCRIPTS=0
+
+for script in "${REQUIRED_SCRIPTS[@]}"; do
+    if [ -f "$SCRIPT_DIR/$script" ] && [ -x "$SCRIPT_DIR/$script" ]; then
+        : # Script exists and is executable
+    else
+        print_warning "Script $script is missing or not executable"
+        MISSING_SCRIPTS=$((MISSING_SCRIPTS + 1))
+        OVERALL_STATUS=1
+    fi
+done
+
+if [ $MISSING_SCRIPTS -eq 0 ]; then
+    check_component "Scripts" 0 "All required scripts present and executable"
+else
+    check_component "Scripts" 1 "$MISSING_SCRIPTS script(s) missing or not executable"
+fi
+
+# Summary
+echo ""
+echo "=========================================="
+if [ $OVERALL_STATUS -eq 0 ]; then
+    print_success "Summary: All checks passed! ✓"
+    echo ""
+    print_info "You can start using RHEL Shell with: redhat-shell"
+else
+    print_error "Summary: Some checks failed ✗"
+    echo ""
+    print_info "Please fix the issues above before using RHEL Shell"
+fi
+echo "=========================================="
+
+exit $OVERALL_STATUS
