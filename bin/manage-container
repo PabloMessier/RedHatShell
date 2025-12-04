@@ -1,0 +1,151 @@
+#!/bin/bash
+
+# Container management script for RHEL shell
+
+# Load common functions and configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
+
+# Function to show usage
+show_usage() {
+    echo "Usage: manage-container [COMMAND]"
+    echo ""
+    echo "Commands:"
+    echo "  status      Show container status"
+    echo "  start       Start the container"
+    echo "  stop        Stop the container"
+    echo "  restart     Restart the container"
+    echo "  remove      Remove the container (keeps image)"
+    echo "  reset       Remove container and image (full reset)"
+    echo "  logs        View container logs"
+    echo "  inspect     Inspect container details"
+    echo "  stats       Show container resource usage"
+    echo ""
+}
+
+# Parse command
+COMMAND="${1:-status}"
+
+case "$COMMAND" in
+    status)
+        if check_container_exists; then
+            STATUS=$(podman inspect -f '{{.State.Status}}' "$CONTAINER_NAME")
+            RUNNING=$(podman inspect -f '{{.State.Running}}' "$CONTAINER_NAME")
+            print_info "Container: $CONTAINER_NAME"
+            print_info "Status: $STATUS"
+            print_info "Running: $RUNNING"
+            if [ "$RUNNING" == "true" ]; then
+                podman stats --no-stream "$CONTAINER_NAME"
+            fi
+        else
+            print_warning "Container '$CONTAINER_NAME' does not exist"
+        fi
+        
+        if check_image_exists; then
+            print_info "Image: $IMAGE_NAME (exists)"
+        else
+            print_warning "Image '$IMAGE_NAME' does not exist"
+        fi
+        ;;
+        
+    start)
+        if check_container_exists; then
+            print_info "Starting container..."
+            podman start "$CONTAINER_NAME"
+            print_success "Container started"
+        else
+            print_error "Container does not exist. Run 'redhat-shell' to create it."
+        fi
+        ;;
+        
+    stop)
+        if check_container_exists; then
+            print_info "Stopping container..."
+            podman stop "$CONTAINER_NAME"
+            print_success "Container stopped"
+        else
+            print_warning "Container does not exist"
+        fi
+        ;;
+        
+    restart)
+        if check_container_exists; then
+            print_info "Restarting container..."
+            podman restart "$CONTAINER_NAME"
+            print_success "Container restarted"
+        else
+            print_error "Container does not exist"
+        fi
+        ;;
+        
+    remove)
+        if check_container_exists; then
+            print_warning "This will remove the container but keep the image"
+            read -p "Are you sure? (y/N): " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                print_info "Removing container..."
+                podman rm -f "$CONTAINER_NAME"
+                print_success "Container removed"
+            else
+                print_info "Cancelled"
+            fi
+        else
+            print_warning "Container does not exist"
+        fi
+        ;;
+        
+    reset)
+        print_warning "This will remove the container AND the image"
+        read -p "Are you sure? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            if check_container_exists; then
+                print_info "Removing container..."
+                podman rm -f "$CONTAINER_NAME"
+            fi
+            if check_image_exists; then
+                print_info "Removing image..."
+                podman rmi "$IMAGE_NAME"
+            fi
+            print_success "Complete reset done. Run 'build-image' to rebuild."
+        else
+            print_info "Cancelled"
+        fi
+        ;;
+        
+    logs)
+        if check_container_exists; then
+            podman logs "$CONTAINER_NAME"
+        else
+            print_error "Container does not exist"
+        fi
+        ;;
+        
+    inspect)
+        if check_container_exists; then
+            podman inspect "$CONTAINER_NAME"
+        else
+            print_error "Container does not exist"
+        fi
+        ;;
+        
+    stats)
+        if check_container_exists; then
+            if check_container_running; then
+                podman stats "$CONTAINER_NAME"
+            else
+                print_warning "Container is not running"
+            fi
+        else
+            print_error "Container does not exist"
+        fi
+        ;;
+        
+    *)
+        print_error "Unknown command: $COMMAND"
+        echo ""
+        show_usage
+        exit 1
+        ;;
+esac

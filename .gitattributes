@@ -1,0 +1,15 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Shell scripts should always use LF
+*.sh text eol=lf
+
+# Ensure scripts maintain execute permissions
+bin/* linguist-language=Shell
+
+# Documents
+*.md text
+*.txt text
+
+# Container files
+Containerfile text eol=lf

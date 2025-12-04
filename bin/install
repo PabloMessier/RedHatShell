@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# Installation script for RHEL shell
+
+set -e
+
+# Load common functions and configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
+
+INSTALL_DIR="$HOME/bin"
+
+# Check if podman is installed
+if ! command -v podman &> /dev/null; then
+    print_error "Podman is not installed!"
+    print_info "Install it using: brew install podman"
+    exit 1
+fi
+
+# Create install directory if it doesn't exist
+if [ ! -d "$INSTALL_DIR" ]; then
+    print_info "Creating $INSTALL_DIR directory..."
+    mkdir -p "$INSTALL_DIR"
+fi
+
+# Copy scripts
+print_info "Installing RHEL shell scripts to $INSTALL_DIR..."
+cp "$SCRIPT_DIR/redhat-shell" "$INSTALL_DIR/"
+cp "$SCRIPT_DIR/build-image" "$INSTALL_DIR/"
+cp "$SCRIPT_DIR/manage-container" "$INSTALL_DIR/"
+cp "$SCRIPT_DIR/common.sh" "$INSTALL_DIR/"
+
+# Make scripts executable
+chmod +x "$INSTALL_DIR/redhat-shell"
+chmod +x "$INSTALL_DIR/build-image"
+chmod +x "$INSTALL_DIR/manage-container"
+chmod +x "$INSTALL_DIR/common.sh"
+
+print_success "Scripts installed successfully!"
+echo ""
+
+# Check if ~/bin is in PATH
+if [[ ":$PATH:" != *":$HOME/bin:"* ]]; then
+    print_warning "$HOME/bin is not in your PATH"
+    print_info "Add the following to your ~/.zshrc or ~/.bashrc:"
+    echo ""
+    echo "    export PATH=\"\$HOME/bin:\$PATH\""
+    echo ""
+    print_info "Then run: source ~/.zshrc"
+else
+    print_success "$HOME/bin is already in your PATH"
+fi
+
+echo ""
+print_info "Next steps:"
+echo "  1. Build the image: build-image"
+echo "  2. Run the shell:   redhat-shell"
+echo "  3. For help:        redhat-shell --help"

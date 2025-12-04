@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Build script for RHEL shell container image
+
+set -e
+
+# Load common functions and configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
+
+CONTAINERFILE="Containerfile"
+PROJECT_ROOT="$(get_project_root)"
+
+cd "$PROJECT_ROOT" || exit 1
+
+# Check if Podman machine is running
+if ! check_podman_machine; then
+    exit 1
+fi
+
+# Check if Containerfile exists
+if [ ! -f "$CONTAINERFILE" ]; then
+    print_error "Containerfile not found in $PROJECT_ROOT"
+    exit 1
+fi
+
+print_info "Building image: $IMAGE_NAME"
+print_info "Using Containerfile: $PROJECT_ROOT/$CONTAINERFILE"
+print_info "Architecture: $ARCH"
+print_info "Platform: $PLATFORM"
+
+# Build the image
+if podman build --platform "$PLATFORM" -t "$IMAGE_NAME" -f "$CONTAINERFILE" .; then
+    print_success "Image built successfully!"
+    print_info "Image name: $IMAGE_NAME"
+    echo ""
+    print_info "You can now run the RHEL shell using: redhat-shell"
+else
+    print_error "Failed to build image"
+    exit 1
+fi

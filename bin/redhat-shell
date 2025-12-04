@@ -1,0 +1,102 @@
+#!/bin/bash
+
+# Load common functions and configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
+
+# Parse command line arguments
+USER_TO_EXEC="$DEFAULT_USER"
+RUN_AS_ROOT=false
+COMMAND_TO_RUN=""
+SHOW_VERSION=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --root|-r)
+            RUN_AS_ROOT=true
+            USER_TO_EXEC="root"
+            shift
+            ;;
+        --user|-u)
+            USER_TO_EXEC="$2"
+            shift 2
+            ;;
+        --command|-c)
+            COMMAND_TO_RUN="$2"
+            shift 2
+            ;;
+        --version|-v)
+            show_version
+            exit 0
+            ;;
+        --help|-h)
+            echo "Usage: redhat-shell [OPTIONS] [COMMAND]"
+            echo ""
+            echo "Options:"
+            echo "  -r, --root          Enter as root user"
+            echo "  -u, --user USER     Enter as specified user (default: $DEFAULT_USER)"
+            echo "  -c, --command CMD   Run a specific command instead of interactive shell"
+            echo "  -v, --version       Show version information"
+            echo "  -h, --help          Show this help message"
+            echo ""
+            echo "Examples:"
+            echo "  redhat-shell                    # Enter as $DEFAULT_USER"
+            echo "  redhat-shell --root             # Enter as root"
+            echo "  redhat-shell -c 'ls -la'        # Run command as $DEFAULT_USER"
+            echo "  redhat-shell --root -c 'dnf update'  # Run command as root"
+            exit 0
+            ;;
+        *)
+            COMMAND_TO_RUN="$*"
+            break
+            ;;
+    esac
+done
+
+# Check if Podman machine is running
+if ! check_podman_machine; then
+    exit 1
+fi
+
+# Check if image exists
+if ! check_image_exists; then
+    print_error "Image '$IMAGE_NAME' not found!"
+    print_info "Please build the image first using: build-image"
+    exit 1
+fi
+
+# Check if container exists
+if ! check_container_exists; then
+    print_info "Creating new container '$CONTAINER_NAME'..."
+    if ! podman run -dit \
+        --name "$CONTAINER_NAME" \
+        --hostname redhat-shell \
+        --privileged \
+        --systemd=always \
+        -v "$HOST_VOLUME":"$CONTAINER_MOUNT":rw \
+        "$IMAGE_NAME"; then
+        print_error "Failed to create container"
+        exit 1
+    fi
+    print_success "Container created successfully"
+    sleep 2  # Give systemd time to initialize
+else
+    # Start container if not running
+    if ! check_container_running; then
+        print_info "Starting existing container '$CONTAINER_NAME'..."
+        if ! podman start "$CONTAINER_NAME"; then
+            print_error "Failed to start container"
+            exit 1
+        fi
+        sleep 1  # Give systemd time to initialize
+    fi
+fi
+
+# Execute into container
+if [ -z "$COMMAND_TO_RUN" ]; then
+    print_info "Entering container '$CONTAINER_NAME' as user '$USER_TO_EXEC'..."
+    podman exec -it --user "$USER_TO_EXEC" "$CONTAINER_NAME" bash
+else
+    print_info "Running command in container as user '$USER_TO_EXEC'..."
+    podman exec -it --user "$USER_TO_EXEC" "$CONTAINER_NAME" bash -c "$COMMAND_TO_RUN"
+fi
