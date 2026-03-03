@@ -1,0 +1,122 @@
+#!/bin/bash
+
+# Script to create macOS application bundle for RHEL Shell
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+APP_NAME="RHEL Shell"
+APP_DIR="$PROJECT_ROOT/${APP_NAME}.app"
+
+echo "Creating macOS application bundle..."
+
+# Create app bundle structure
+mkdir -p "$APP_DIR/Contents/MacOS"
+mkdir -p "$APP_DIR/Contents/Resources"
+
+# Create the launcher script
+cat > "$APP_DIR/Contents/MacOS/launch.sh" << 'EOF'
+#!/bin/bash
+
+# Simple: Just launch Terminal and run redhat-shell with full path
+# Launch as root for simplicity
+REDHAT_SHELL_PATH="$HOME/bin/redhat-shell"
+
+osascript << APPLESCRIPT
+tell application "Terminal"
+    -- Create new window with RHEL shell
+    do script "'$REDHAT_SHELL_PATH' --root"
+    activate
+end tell
+APPLESCRIPT
+EOF
+
+chmod +x "$APP_DIR/Contents/MacOS/launch.sh"
+
+# Copy the common.sh file to Resources
+cp "$SCRIPT_DIR/common.sh" "$APP_DIR/Contents/Resources/"
+
+# Convert SVG to ICNS (macOS icon format)
+echo "Converting icon..."
+
+if command -v rsvg-convert &> /dev/null && command -v sips &> /dev/null; then
+    # Use rsvg-convert if available
+    TEMP_PNG="/tmp/redhat_icon_temp.png"
+    rsvg-convert -w 512 -h 512 "$PROJECT_ROOT/Red_Hat_logo.svg" -o "$TEMP_PNG"
+    
+    # Create iconset
+    ICONSET="/tmp/RedHat.iconset"
+    mkdir -p "$ICONSET"
+    
+    # Generate all required sizes
+    sips -z 16 16 "$TEMP_PNG" --out "$ICONSET/icon_16x16.png" > /dev/null 2>&1
+    sips -z 32 32 "$TEMP_PNG" --out "$ICONSET/icon_16x16@2x.png" > /dev/null 2>&1
+    sips -z 32 32 "$TEMP_PNG" --out "$ICONSET/icon_32x32.png" > /dev/null 2>&1
+    sips -z 64 64 "$TEMP_PNG" --out "$ICONSET/icon_32x32@2x.png" > /dev/null 2>&1
+    sips -z 128 128 "$TEMP_PNG" --out "$ICONSET/icon_128x128.png" > /dev/null 2>&1
+    sips -z 256 256 "$TEMP_PNG" --out "$ICONSET/icon_128x128@2x.png" > /dev/null 2>&1
+    sips -z 256 256 "$TEMP_PNG" --out "$ICONSET/icon_256x256.png" > /dev/null 2>&1
+    sips -z 512 512 "$TEMP_PNG" --out "$ICONSET/icon_256x256@2x.png" > /dev/null 2>&1
+    sips -z 512 512 "$TEMP_PNG" --out "$ICONSET/icon_512x512.png" > /dev/null 2>&1
+    cp "$TEMP_PNG" "$ICONSET/icon_512x512@2x.png"
+    
+    # Create ICNS file
+    iconutil -c icns "$ICONSET" -o "$APP_DIR/Contents/Resources/AppIcon.icns"
+    
+    # Cleanup
+    rm -rf "$ICONSET" "$TEMP_PNG"
+    echo "Icon created successfully"
+elif command -v sips &> /dev/null; then
+    # Fallback: just copy the SVG and convert with sips
+    echo "Note: rsvg-convert not found. Install with: brew install librsvg"
+    echo "Creating basic icon..."
+    
+    # Try to use sips directly on SVG (may not work well)
+    TEMP_PNG="/tmp/redhat_icon_temp.png"
+    cp "$PROJECT_ROOT/Red_Hat_logo.svg" "$TEMP_PNG.svg"
+    
+    echo "Please convert Red_Hat_logo.svg to a 512x512 PNG manually and re-run this script"
+else
+    echo "Warning: Icon conversion tools not available"
+    echo "Install librsvg with: brew install librsvg"
+fi
+
+# Create Info.plist
+cat > "$APP_DIR/Contents/Info.plist" << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>launch.sh</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.rhelshell.app</string>
+    <key>CFBundleName</key>
+    <string>RHEL Shell</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1.0</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>10.13</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+</dict>
+</plist>
+EOF
+
+echo ""
+echo "✅ Application bundle created successfully!"
+echo ""
+echo "Location: $APP_DIR"
+echo ""
+echo "You can now:"
+echo "  1. Double-click '$APP_NAME.app' to launch"
+echo "  2. Drag it to your Applications folder"
+echo "  3. Drag it to your Dock for quick access"
+echo ""

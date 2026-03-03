@@ -41,5 +41,12 @@ Temporary Items
 # Logs
 *.log
 
+# Ignore SSH keys in repo (users should generate their own)
+ssh-keys/id_ed25519
+ssh-keys/id_ed25519.pub
+
+# macOS app bundle (build artifact - regenerate with bin/create-app)
+RHEL Shell.app/
+
 # Note: Ensure bin/ scripts maintain execute permissions
 # Use: git update-index --chmod=+x bin/*

@@ -1,0 +1,4 @@
+# Ignore the private key in this folder
+id_ed25519
+# Allow public key
+!id_ed25519.pub

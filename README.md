@@ -7,8 +7,9 @@ A WSL-like experience for running a RHEL-based shell environment on macOS using 
 - **Systemd-enabled container** - Full systemd support for running services
 - **Persistent environment** - Container persists across reboots
 - **User-friendly CLI** - Simple commands to enter and manage the shell
+- **macOS Application** - Double-clickable app with Red Hat icon for easy access
 - **macOS volume mounting** - Access your macOS `/Users` directory from inside the container
-- **Non-root user** - Default user `pablo` with full sudo access
+- **Non-root user** - Default user `user` with full sudo access (configurable)
 - **Development tools** - Pre-installed with gcc, git, python, node.js, and more
 - **Multiple shell options** - bash, zsh, and fish available
 
@@ -28,10 +29,11 @@ podman machine init
 podman machine start
 ```
 
-### 2. Clone or download this project
+### 2. Clone this project
 
 ```bash
-cd ~/Desktop/MyFiles/RedHatShell
+git clone https://github.com/yourusername/RedHatShell.git
+cd RedHatShell
 ```
 
 ### 3. Install the scripts
@@ -66,9 +68,20 @@ This will build the CentOS Stream 9 image with all necessary tools.
 
 ### 6. Launch the RHEL shell
 
+**Option A: Command line (recommended for power users)**
 ```bash
 redhat-shell
 ```
+
+**Option B: Desktop application**
+```bash
+./bin/create-app
+```
+
+This creates `RHEL Shell.app` with the Red Hat logo. You can:
+- Double-click it to launch
+- Drag it to your Applications folder
+- Add it to your Dock
 
 That's it! You're now inside a RHEL-like environment.
 
@@ -76,7 +89,7 @@ That's it! You're now inside a RHEL-like environment.
 
 ### Basic Commands
 
-#### Enter the shell as default user (pablo)
+#### Enter the shell as default user
 ```bash
 redhat-shell
 ```
@@ -187,11 +200,13 @@ RedHatShell/
 ├── Makefile                   # Convenience targets for common tasks
 ├── LICENSE                    # MIT License
 ├── CHANGELOG.md               # Version history
+├── Red_Hat_logo.svg           # Red Hat logo for app icon
 ├── .config                    # Configuration file (optional)
 ├── .editorconfig              # Editor configuration
 ├── bin/
 │   ├── redhat-shell           # Main shell launcher script
 │   ├── build-image            # Image build script
+│   ├── create-app             # macOS app bundle creator
 │   ├── install                # Installation script
 │   ├── manage-container       # Container management script
 │   ├── health-check           # Health check and validation script
@@ -207,7 +222,7 @@ RedHatShell/
 The project now supports centralized configuration via the `.config` file. You can customize:
 
 - **Container name**: `CONTAINER_NAME="redhat-shell"`
-- **Default user**: `DEFAULT_USER="pablo"`
+- **Default user**: `DEFAULT_USER="user"`
 - **Volume mounts**: `HOST_VOLUME="/Users"` and `CONTAINER_MOUNT="/mnt/host"`
 - **Debug mode**: `DEBUG="false"`
 
@@ -235,7 +250,7 @@ Either edit `.config` or modify the `Containerfile` to create a different defaul
 > ⚠️ **SECURITY WARNING**: The default passwords are set to `redhat` for demonstration purposes.
 > **You MUST change these passwords** if you're using this in any production or sensitive environment!
 
-- **User**: `pablo` (password: `redhat`)
+- **User**: `user` (password: `redhat`)
 - **Root**: `root` (password: `redhat`)
 
 **To change passwords:**

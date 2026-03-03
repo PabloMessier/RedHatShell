@@ -11,7 +11,7 @@
 CONTAINER_NAME="redhat-shell"
 HOST_VOLUME="/Users"
 CONTAINER_MOUNT="/mnt/host"
-DEFAULT_USER="pablo"
+DEFAULT_USER="user"
 DEBUG="${DEBUG:-false}"
 
 # Load user configuration if available

@@ -114,14 +114,14 @@ podman start -ai redhat-shell
 
 Switch to Non-Root User Automatically (Optional)
 
-If you want to enter as user pablo:
+If you want to enter as a non-root user:
 
 Edit ~/bin/redhat-shell:
 # Replace this:
 podman exec -it "$CONTAINER" bash
 
 # With this:
-podman exec -it --user pablo "$CONTAINER" bash
+podman exec -it --user user "$CONTAINER" bash
 
 Enable Container Autostart on Reboot (Optional)
 podman generate systemd --name redhat-shell --files --restart-policy=always

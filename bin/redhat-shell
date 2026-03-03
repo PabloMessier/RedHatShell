@@ -92,11 +92,33 @@ else
     fi
 fi
 
+# Determine working directory inside container
+# If we're in /Users on macOS, map it to /mnt/host inside container
+WORKDIR=""
+CURRENT_DIR="$(pwd)"
+if [[ "$CURRENT_DIR" == /Users/* ]]; then
+    # Map /Users/username/... to /mnt/host/username/...
+    WORKDIR="/mnt/host${CURRENT_DIR#/Users}"
+    # Verify the directory exists in the container
+    if ! podman exec "$CONTAINER_NAME" test -d "$WORKDIR" 2>/dev/null; then
+        print_debug "Working directory $WORKDIR does not exist in container, using default"
+        WORKDIR=""
+    fi
+fi
+
 # Execute into container
 if [ -z "$COMMAND_TO_RUN" ]; then
     print_info "Entering container '$CONTAINER_NAME' as user '$USER_TO_EXEC'..."
-    podman exec -it --user "$USER_TO_EXEC" "$CONTAINER_NAME" bash
+    if [ -n "$WORKDIR" ]; then
+        podman exec -it --user "$USER_TO_EXEC" --workdir "$WORKDIR" "$CONTAINER_NAME" bash
+    else
+        podman exec -it --user "$USER_TO_EXEC" "$CONTAINER_NAME" bash
+    fi
 else
     print_info "Running command in container as user '$USER_TO_EXEC'..."
-    podman exec -it --user "$USER_TO_EXEC" "$CONTAINER_NAME" bash -c "$COMMAND_TO_RUN"
+    if [ -n "$WORKDIR" ]; then
+        podman exec -it --user "$USER_TO_EXEC" --workdir "$WORKDIR" "$CONTAINER_NAME" bash -c "$COMMAND_TO_RUN"
+    else
+        podman exec -it --user "$USER_TO_EXEC" "$CONTAINER_NAME" bash -c "$COMMAND_TO_RUN"
+    fi
 fi
