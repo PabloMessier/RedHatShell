@@ -32,7 +32,7 @@ podman machine start
 ### 2. Clone this project
 
 ```bash
-git clone https://github.com/yourusername/RedHatShell.git
+git clone https://github.com/PabloMessier/RedHatShell.git
 cd RedHatShell
 ```
 
