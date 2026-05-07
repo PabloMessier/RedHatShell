@@ -92,6 +92,11 @@ else
     fi
 fi
 
+# Auto-provision a container user that mirrors the host user (UID/GID).
+# This gives a WSL-like experience: files in /mnt/host keep matching ownership
+# and each engineer gets their own home directory inside the container.
+provision_user_in_container "$USER_TO_EXEC"
+
 # Determine working directory inside container
 # If we're in /Users on macOS, map it to /mnt/host inside container
 WORKDIR=""

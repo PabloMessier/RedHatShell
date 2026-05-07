@@ -18,8 +18,8 @@ Now you’re in a Linux environment, like WSL.
 If you have Red Hat subscription access, run:
 
 podman login registry.redhat.io
-podman pull registry.redhat.io/ubi9/ubi
-podman run -it --rm registry.redhat.io/ubi9/ubi
+podman pull registry.redhat.io/ubi10/ubi
+podman run -it --rm registry.redhat.io/ubi10/ubi
 
 Alternatively, use CentOS Stream 9 or Fedora if you don’t have RH access:
 podman run -it --rm quay.io/centos/centos:stream9
@@ -43,7 +43,7 @@ Virtualization: podman
 Podman supports systemd in containers via OCI hooks.
 
 Use a container that supports systemd:
-podman run -it --rm --privileged --systemd=always registry.redhat.io/ubi9/ubi
+podman run -it --rm --privileged --systemd=always registry.redhat.io/ubi10/ubi
 
 Or use a systemd-enabled container image like:
 podman run -it --rm --privileged --systemd=always quay.io/centos/centos:stream9
@@ -56,7 +56,7 @@ If you’re aiming to match the RHEL-on-WSL feel on macOS, then:
 Bonus: Running a container with systemd
 
 To simulate the WSL-style environment more closely (i.e., with hostnamectl reporting Chassis: container), run:
-podman run --rm -it --privileged --systemd=always registry.redhat.io/ubi9/ubi
+podman run --rm -it --privileged --systemd=always registry.redhat.io/ubi10/ubi
 
 Or for CentoOS:
 podman run --rm -it --privileged --systemd=always quay.io/centos/centos:stream9
@@ -86,7 +86,7 @@ Corrected Command:
 podman run --rm -it --privileged --systemd=always quay.io/centos/centos:stream9
 
 Or for UBI:
-podman run --rm -it --privileged --systemd=always registry.redhat.io/ubi9/ubi
+podman run --rm -it --privileged --systemd=always registry.redhat.io/ubi10/ubi
 
 Explanation of Flags:
 	•	--privileged: Gives the container almost all the capabilities of the host (required for systemd to control namespaces properly).
@@ -103,7 +103,7 @@ podman run -dit \
   --privileged \
   --systemd=always \
   -v redhat-home:/home \
-  registry.redhat.io/ubi9/ubi
+  registry.redhat.io/ubi10/ubi
 
 Then later:
 podman exec -it redhat-shell /bin/bash

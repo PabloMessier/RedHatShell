@@ -7,11 +7,17 @@
 # Configuration
 # ============================================================================
 
+# Detect host user (auto-mirrored inside the container for a WSL-like UX)
+HOST_USER="$(id -un)"
+HOST_UID="$(id -u)"
+HOST_GID="$(id -g)"
+
 # Default configuration values
 CONTAINER_NAME="redhat-shell"
 HOST_VOLUME="/Users"
 CONTAINER_MOUNT="/mnt/host"
-DEFAULT_USER="user"
+DEFAULT_USER="$HOST_USER"
+DEFAULT_USER_PASSWORD="redhat"
 DEBUG="${DEBUG:-false}"
 
 # Load user configuration if available
@@ -165,4 +171,59 @@ show_version() {
     echo "Version: 1.0.0"
     echo "Architecture: $ARCH ($ARCH_SUFFIX)"
     echo "Platform: $PLATFORM"
+}
+
+# Provision a user account inside the container that mirrors the host user.
+# This gives a WSL-like experience where files in /mnt/host bind-mount keep
+# matching ownership.
+#
+# Args:
+#   $1 - username (default: $DEFAULT_USER)
+#   $2 - uid      (default: $HOST_UID)
+#   $3 - gid      (default: $HOST_GID)
+#   $4 - container name (default: $CONTAINER_NAME)
+provision_user_in_container() {
+    local user="${1:-$DEFAULT_USER}"
+    local uid="${2:-$HOST_UID}"
+    local gid="${3:-$HOST_GID}"
+    local container="${4:-$CONTAINER_NAME}"
+    local password="${DEFAULT_USER_PASSWORD:-redhat}"
+
+    # Nothing to do for root
+    if [ "$user" = "root" ]; then
+        return 0
+    fi
+
+    # Skip if user already exists
+    if podman exec "$container" id -u "$user" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    print_debug "Provisioning user '$user' (uid=$uid, gid=$gid) inside '$container'..."
+
+    podman exec "$container" bash -c "
+        set -e
+        # Create primary group with matching GID if no group owns that GID yet
+        if ! getent group $gid >/dev/null 2>&1; then
+            groupadd -g $gid '$user' 2>/dev/null || groupadd '$user'
+        fi
+        primary_group=\$(getent group $gid | cut -d: -f1)
+        : \"\${primary_group:=$user}\"
+
+        # Create the user with matching UID; fall back to next-available UID if taken
+        useradd -m -u $uid -g \"\$primary_group\" -G wheel -s /bin/bash '$user' 2>/dev/null \\
+            || useradd -m -g \"\$primary_group\" -G wheel -s /bin/bash '$user'
+
+        echo '$user:$password' | chpasswd
+
+        # Passwordless sudo via drop-in (idempotent)
+        echo '$user ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/$user
+        chmod 0440 /etc/sudoers.d/$user
+    " >/dev/null 2>&1 || {
+        print_warning "Failed to auto-provision user '$user' inside the container."
+        return 1
+    }
+
+    print_success "Created container user '$user' (uid=$uid)."
+    return 0
 }

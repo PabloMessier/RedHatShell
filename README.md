@@ -1,6 +1,6 @@
 # RHEL Shell for macOS
 
-A WSL-like experience for running a RHEL-based shell environment on macOS using Podman containers. This project provides a persistent, systemd-enabled CentOS Stream 9 container that mimics the Windows Subsystem for Linux (WSL) experience.
+A WSL-like experience for running a RHEL shell environment on macOS using Podman containers. This project provides a persistent, systemd-enabled **Red Hat Enterprise Linux 10 (UBI)** container that mimics the Windows Subsystem for Linux (WSL) experience — including auto-mirroring your macOS username and UID inside the container so file ownership on bind mounts just works.
 
 ## 🎯 Features
 
@@ -9,7 +9,8 @@ A WSL-like experience for running a RHEL-based shell environment on macOS using 
 - **User-friendly CLI** - Simple commands to enter and manage the shell
 - **macOS Application** - Double-clickable app with Red Hat icon for easy access
 - **macOS volume mounting** - Access your macOS `/Users` directory from inside the container
-- **Non-root user** - Default user `user` with full sudo access (configurable)
+- **Auto-mirrored host user** - Your macOS username, UID, and GID are auto-provisioned inside the container on first launch (WSL-style)
+- **Non-root user** - Auto-created account with passwordless sudo (via the `wheel` group)
 - **Development tools** - Pre-installed with gcc, git, python, node.js, and more
 - **Multiple shell options** - bash, zsh, and fish available
 
@@ -64,7 +65,7 @@ source ~/.zshrc
 build-image
 ```
 
-This will build the CentOS Stream 9 image with all necessary tools.
+This will build the RHEL 10 UBI image with all necessary tools.
 
 ### 6. Launch the RHEL shell
 
@@ -219,10 +220,11 @@ RedHatShell/
 
 ## 🔧 Configuration
 
-The project now supports centralized configuration via the `.config` file. You can customize:
+The project supports centralized configuration via the `.config` file. You can customize:
 
 - **Container name**: `CONTAINER_NAME="redhat-shell"`
-- **Default user**: `DEFAULT_USER="user"`
+- **Default user**: `DEFAULT_USER="$USER"` (auto-detected from your macOS account)
+- **Default user password**: `DEFAULT_USER_PASSWORD="redhat"`
 - **Volume mounts**: `HOST_VOLUME="/Users"` and `CONTAINER_MOUNT="/mnt/host"`
 - **Debug mode**: `DEBUG="false"`
 
@@ -239,9 +241,15 @@ The image name is automatically determined based on your system architecture:
 - Apple Silicon (M1/M2/M3/M4): `localhost/centos9-systemd-arm64`
 - Intel Macs: `localhost/centos9-systemd-amd64`
 
-### Changing the default user
+### Default user (WSL-style auto-provisioning)
 
-Either edit `.config` or modify the `Containerfile` to create a different default user.
+By default, `redhat-shell` mirrors your macOS account inside the container:
+
+- The username defaults to `$(id -un)` on the host.
+- On first launch, a matching account is created inside the container with the same UID/GID, added to the `wheel` group, and granted passwordless `sudo`.
+- Because UIDs match, files in `/mnt/host` keep correct ownership and permissions — no `chown` gymnastics.
+
+To override, set `DEFAULT_USER` in `.config` or pass `--user <name>` on the command line.
 
 ## 🛠️ Inside the Container
 
@@ -250,7 +258,7 @@ Either edit `.config` or modify the `Containerfile` to create a different defaul
 > ⚠️ **SECURITY WARNING**: The default passwords are set to `redhat` for demonstration purposes.
 > **You MUST change these passwords** if you're using this in any production or sensitive environment!
 
-- **User**: `user` (password: `redhat`)
+- **Your user** (auto-created, name = your macOS username): password `redhat`
 - **Root**: `root` (password: `redhat`)
 
 **To change passwords:**
